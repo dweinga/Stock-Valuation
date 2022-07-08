@@ -13,6 +13,25 @@ class Assumptions(object):
         self.p_fcf = get_int("Enter the terminal P/FCF multiple: ")
         self.desired_ror = get_int("Enter the desired rate of return (discount rate) [%]: ")
 
+    def evaluate(self, revenue):
+        dcf = 0
+        discounted_profit = 0
+        discount_multiple = (1 + self.rev_growth / 100)/(1 + self.desired_ror / 100)
+        for future_year in range(self.years_of_analysis):
+            dcf += (revenue[0] * self.fcf_margin / 100) * discount_multiple ** (future_year + 1)
+            discounted_profit += (revenue[0] * self.profit_margin / 100) * discount_multiple ** (future_year + 1)
+        terminal_fcf_value = self.p_fcf * (revenue[0] * self.fcf_margin / 100)\
+                             * discount_multiple ** self.years_of_analysis
+        terminal_prft_value = self.p_e * (revenue[0] * self.profit_margin / 100)\
+                             * discount_multiple ** self.years_of_analysis
+        ev_fcf = dcf + terminal_fcf_value
+        ev_profit = discounted_profit + terminal_prft_value
+        intrinsic_fcf_val = ev_fcf / int(overview_data["SharesOutstanding"])
+        intrinsic_profit_val = ev_profit / int(overview_data["SharesOutstanding"])
+        print('*' * 80)
+        print("Fair price (Free cash flow): {:.2f}".format(intrinsic_fcf_val))
+        print("Fair price (net profit): {:.2f}".format(intrinsic_profit_val))
+
 
 def fetch_data(data_type='INCOME_STATEMENT', ticker_symbol='IBM', api_key='demo'):
     """
@@ -155,4 +174,4 @@ if __name__ == "__main__":
 
         # Get user assumptions and perform analysis
         valuation_assumptions = Assumptions()
-        evaluate(valuation_assumptions, revenue_list)
+        valuation_assumptions.evaluate(revenue_list)
