@@ -5,25 +5,25 @@ import json
 
 class Assumptions(object):
     def __init__(self):
+        percernt_to_decimal = lambda x: x/100 # Function to change percent input to decimal fraction
         self.years_of_analysis = get_int("No. of years for the analysis: ")
-        self.rev_growth = get_int("Enter the estimated annual revenue growth [%]: ")
-        self.profit_margin = get_int("Enter the estimated annual profit margin [%]: ")
-        self.fcf_margin = get_int("Enter the estimated annual free cash flow margin [%]: ")
+        self.rev_growth = percernt_to_decimal(get_int("Enter the estimated annual revenue growth [%]: "))
+        self.profit_margin = percernt_to_decimal(get_int("Enter the estimated annual profit margin [%]: "))
+        self.fcf_margin = percernt_to_decimal(get_int("Enter the estimated annual free cash flow margin [%]: "))
         self.p_e = get_int("Enter the terminal P/E multiple: ")
         self.p_fcf = get_int("Enter the terminal P/FCF multiple: ")
-        self.desired_ror = get_int("Enter the desired rate of return (discount rate) [%]: ")
+        self.desired_ror = percernt_to_decimal(get_int("Enter the desired rate of return (discount rate) [%]: "))
 
     def evaluate(self, revenue):
-        dcf = 0
-        discounted_profit = 0
-        discount_multiple = (1 + self.rev_growth / 100)/(1 + self.desired_ror / 100)
+        """Evaluation of fair price based on the input assumptions"""
+        dcf = 0  # Total cash flow over the analysis discounted to present value
+        discounted_profit = 0  # Total net profit over the analysis discounted to present value
+        discount_multiple = (1 + self.rev_growth)/(1 + self.desired_ror)
         for future_year in range(self.years_of_analysis):
-            dcf += (revenue[0] * self.fcf_margin / 100) * discount_multiple ** (future_year + 1)
-            discounted_profit += (revenue[0] * self.profit_margin / 100) * discount_multiple ** (future_year + 1)
-        terminal_fcf_value = self.p_fcf * (revenue[0] * self.fcf_margin / 100)\
-                             * discount_multiple ** self.years_of_analysis
-        terminal_prft_value = self.p_e * (revenue[0] * self.profit_margin / 100)\
-                             * discount_multiple ** self.years_of_analysis
+            dcf += (revenue[0] * self.fcf_margin) * discount_multiple ** (future_year + 1)
+            discounted_profit += (revenue[0] * self.profit_margin) * discount_multiple ** (future_year + 1)
+        terminal_fcf_value = self.p_fcf * (revenue[0] * self.fcf_margin) * discount_multiple ** self.years_of_analysis
+        terminal_prft_value = self.p_e * (revenue[0] * self.profit_margin) * discount_multiple ** self.years_of_analysis
         ev_fcf = dcf + terminal_fcf_value
         ev_profit = discounted_profit + terminal_prft_value
         intrinsic_fcf_val = ev_fcf / int(overview_data["SharesOutstanding"])
@@ -115,24 +115,6 @@ def present_historic_data(rev_list, fcf_margin, profit_margin, p_e):
         print()
     print(f"Current P/E: {p_e}")
     print('*' * 80)
-
-
-def evaluate(assumptions, revenue):
-    dcf = 0
-    discounted_profit = 0
-    discount_multiple = (1 + assumptions.rev_growth / 100)/(1 + assumptions.desired_ror / 100)
-    for future_year in range(assumptions.years_of_analysis):
-        dcf += (revenue[0] * assumptions.fcf_margin / 100) * discount_multiple ** (future_year + 1)
-        discounted_profit += (revenue[0] * assumptions.profit_margin / 100) * discount_multiple ** (future_year + 1)
-    terminal_fcf_value = assumptions.p_fcf * (revenue[0] * assumptions.fcf_margin / 100) * discount_multiple ** assumptions.years_of_analysis
-    terminal_prft_value = assumptions.p_e * (revenue[0] * assumptions.profit_margin / 100) * discount_multiple ** assumptions.years_of_analysis
-    ev_fcf = dcf + terminal_fcf_value
-    ev_profit = discounted_profit + terminal_prft_value
-    intrinsic_fcf_val = ev_fcf / int(overview_data["SharesOutstanding"])
-    intrinsic_profit_val = ev_profit / int(overview_data["SharesOutstanding"])
-    print('*' * 80)
-    print("Fair price (Free cash flow): {:.2f}".format(intrinsic_fcf_val))
-    print("Fair price (net profit): {:.2f}".format(intrinsic_profit_val))
 
 
 if __name__ == "__main__":
