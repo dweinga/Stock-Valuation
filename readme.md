@@ -42,5 +42,4 @@ The program will start over prompting for a new ticker symbol or type 'quit' to 
 ## Current pitfalls
 A few problems that I hope to fix in the future:
 * Error handling - specially when there is a mistake with the ticker symbol.
-+ Input must be `int` numbers for the assumptions.
-* Hopefully, at some point, create a UI.
+* Hopefully, at some point, I plan to create a UI.

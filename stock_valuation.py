@@ -1,21 +1,24 @@
-# First you must receive an API key from https://www.alphavantage.co/support/#api-key
+"""Before running the program you must receive an API key from
+ https://www.alphavantage.co/support/#api-key"""
 import requests
-import json
 
 
 class Assumptions(object):
     def __init__(self):
-        percernt_to_decimal = lambda x: x/100 # Function to change percent input to decimal fraction
+        def percent_to_decimal(x):
+            """Function to change percent input to decimal fraction"""
+            return x/100
+
         self.years_of_analysis = get_int("No. of years for the analysis: ")
-        self.rev_growth = percernt_to_decimal(get_int("Enter the estimated annual revenue growth [%]: "))
-        self.profit_margin = percernt_to_decimal(get_int("Enter the estimated annual profit margin [%]: "))
-        self.fcf_margin = percernt_to_decimal(get_int("Enter the estimated annual free cash flow margin [%]: "))
-        self.p_e = get_int("Enter the terminal P/E multiple: ")
-        self.p_fcf = get_int("Enter the terminal P/FCF multiple: ")
-        self.desired_ror = percernt_to_decimal(get_int("Enter the desired rate of return (discount rate) [%]: "))
+        self.rev_growth = percent_to_decimal(get_number("Enter the estimated annual revenue growth [%]: "))
+        self.profit_margin = percent_to_decimal(get_number("Enter the estimated annual profit margin [%]: "))
+        self.fcf_margin = percent_to_decimal(get_number("Enter the estimated annual free cash flow margin [%]: "))
+        self.p_e = get_number("Enter the terminal P/E multiple: ")
+        self.p_fcf = get_number("Enter the terminal P/FCF multiple: ")
+        self.desired_ror = percent_to_decimal(get_number("Enter the desired rate of return (discount rate) [%]: "))
 
     def evaluate(self, revenue):
-        """Evaluation of fair price based on the input assumptions"""
+        """Evaluation of fair stock price based on the input assumptions"""
         dcf = 0  # Total cash flow over the analysis discounted to present value
         discounted_profit = 0  # Total net profit over the analysis discounted to present value
         discount_multiple = (1 + self.rev_growth)/(1 + self.desired_ror)
@@ -35,23 +38,14 @@ class Assumptions(object):
 
 def fetch_data(data_type='INCOME_STATEMENT', ticker_symbol='IBM', api_key='demo'):
     """
-    Get data in json format from file if exists otherwise from url at alphavantage.co
-    and create file in directory.
+    Get data in json format from url at alphavantage.co.
     :return: json_data: 
     """
-    filename = "{}_{}.json".format(ticker_symbol, data_type)
-    try:
-        with open(filename, 'r') as json_data_from_file:
-            return json.load(json_data_from_file)
-    except FileNotFoundError:
-        json_data_source = \
-            'https://www.alphavantage.co/query?function={}&symbol={}&apikey={}'\
-            .format(data_type, ticker_symbol, api_key)
-        r = requests.get(json_data_source)
-        with open(filename, 'w') as dumpfile:
-            json.dump(r.json(), dumpfile)
-            print(f"{ticker_symbol}_{data_type} File created")
-        return r.json()
+    json_data_source = \
+        'https://www.alphavantage.co/query?function={}&symbol={}&apikey={}'\
+        .format(data_type, ticker_symbol, api_key)
+    requested_data = requests.get(json_data_source)
+    return requested_data.json()
 
 
 def get_user_input():
@@ -72,6 +66,15 @@ def get_int(prompt):
         if number.isnumeric():
             return int(number)
         else:
+            print("Enter a valid whole number, please try again.")
+
+
+def get_number(prompt):
+    while True:
+        number = input(prompt)
+        try:
+            return float(number)
+        except ValueError:
             print("Enter a valid number, please try again.")
 
 
@@ -83,16 +86,15 @@ def single_attribute_list_creator(attribute, statement):
 
 
 def calculate_margins(bottom_line: list, top_line: list) -> list:
-    margin = []
-    for ii in range(len(bottom_line)):
-        margin.append(bottom_line[ii]/top_line[ii])
+    """"""
+    margin = [bottom_line[ii]/top_line[ii] for ii in range(len(bottom_line))]
     return margin
 
 
 def present_historic_data(rev_list, fcf_margin, profit_margin, p_e):
     cagr_rev = []
     for j in range(1, len(rev_list)):
-        cagr_rev.append("%.1f"%(((rev_list[0]/rev_list[j]) ** (1/j) - 1) * 100) + " %")
+        cagr_rev.append("%.1f" % (((rev_list[0]/rev_list[j]) ** (1/j) - 1) * 100) + " %")
     avg_fcf_margin = []
     sum_fcf_margin = 0
     avg_profit_margin = []
@@ -120,7 +122,6 @@ def present_historic_data(rev_list, fcf_margin, profit_margin, p_e):
 if __name__ == "__main__":
     while True:
         apikey, ticker = get_user_input()
-        print('*' * 80)
         if ticker.casefold() == 'quit':
             break
         income_data = fetch_data('INCOME_STATEMENT', ticker, apikey)
