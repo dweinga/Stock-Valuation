@@ -29,21 +29,30 @@ class Assumptions(object):
         terminal_prft_value = self.p_e * (revenue[0] * self.profit_margin) * discount_multiple ** self.years_of_analysis
         ev_fcf = dcf + terminal_fcf_value
         ev_profit = discounted_profit + terminal_prft_value
-        intrinsic_fcf_val = ev_fcf / int(overview_data["SharesOutstanding"])
-        intrinsic_profit_val = ev_profit / int(overview_data["SharesOutstanding"])
+        intrinsic_fcf_val = ev_fcf / int(stock.overview["SharesOutstanding"])
+        intrinsic_profit_val = ev_profit / int(stock.overview["SharesOutstanding"])
         print('*' * 80)
         print("Fair price (Free cash flow): {:.2f}".format(intrinsic_fcf_val))
         print("Fair price (net profit): {:.2f}".format(intrinsic_profit_val))
 
 
+class Stock_Data(object):
+    def __init__(self, ticker_symbol='IBM', api='demo'):
+        self.symbol = ticker_symbol
+        self.income_statement = fetch_data('INCOME_STATEMENT', ticker_symbol, api)
+        self.balance_sheet = fetch_data('BALANCE_SHEET', ticker_symbol, api)
+        self.cash_flow = fetch_data('CASH_FLOW', ticker_symbol, api)
+        self.overview = fetch_data('OVERVIEW', ticker_symbol, api)
+        # self.currency = currency
+
+
 def fetch_data(data_type='INCOME_STATEMENT', ticker_symbol='IBM', api_key='demo'):
     """
     Get data in json format from url at alphavantage.co.
-    :return: json_data: 
+    :return: json_data:
     """
-    json_data_source = \
-        'https://www.alphavantage.co/query?function={}&symbol={}&apikey={}'\
-        .format(data_type, ticker_symbol, api_key)
+    url = 'https://www.alphavantage.co/query?function={}&symbol={}&apikey={}'
+    json_data_source = url.format(data_type, ticker_symbol, api_key)
     requested_data = requests.get(json_data_source)
     return requested_data.json()
 
@@ -124,22 +133,19 @@ if __name__ == "__main__":
         apikey, ticker = get_user_input()
         if ticker.casefold() == 'quit':
             break
-        income_data = fetch_data('INCOME_STATEMENT', ticker, apikey)
-        balance_data = fetch_data('BALANCE_SHEET', ticker, apikey)
-        cash_flow_data = fetch_data('CASH_FLOW', ticker, apikey)
-        overview_data = fetch_data('OVERVIEW', ticker, apikey)
+        stock = Stock_Data(ticker, apikey)
 
         # Create income and cash flow statement dictionary keys are years
         # - for each year a dictionary of the statement is stored
         annual_income_statement = {}
         annual_cash_flow_statement = {}
         years = []
-        for index, report in enumerate(income_data['annualReports']):
+        for index, report in enumerate(stock.income_statement['annualReports']):
             # print(data[list(data.keys())[1]][index])
             year = report['fiscalDateEnding'][:4]
             years.append(year)
             annual_income_statement[year] = report
-            annual_cash_flow_statement[year] = cash_flow_data['annualReports'][index]
+            annual_cash_flow_statement[year] = stock.cash_flow['annualReports'][index]
 
         revenue_list = single_attribute_list_creator('totalRevenue', annual_income_statement)
         net_income_list = single_attribute_list_creator('netIncome', annual_income_statement)
@@ -153,7 +159,7 @@ if __name__ == "__main__":
             free_cash_flow_list.append(operating_cash_flow_list[i] - capital_expenditures_list[i])
         free_cash_flow_margin = calculate_margins(free_cash_flow_list, revenue_list)
 
-        present_historic_data(revenue_list, free_cash_flow_margin, net_income_margin, overview_data["PERatio"])
+        present_historic_data(revenue_list, free_cash_flow_margin, net_income_margin, stock.overview["PERatio"])
 
         # Get user assumptions and perform analysis
         valuation_assumptions = Assumptions()
