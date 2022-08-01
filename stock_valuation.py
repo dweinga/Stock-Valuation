@@ -6,7 +6,7 @@ import requests
 class Assumptions(object):
     def __init__(self):
         def percent_to_decimal(x):
-            """Function to change percent input to decimal fraction"""
+            """Helper function to change percent input to decimal fraction"""
             return x/100
 
         self.years_of_analysis = get_int("No. of years for the analysis: ")
@@ -17,7 +17,7 @@ class Assumptions(object):
         self.p_fcf = get_number("Enter the terminal P/FCF multiple: ")
         self.desired_ror = percent_to_decimal(get_number("Enter the desired rate of return (discount rate) [%]: "))
 
-    def evaluate(self, revenue):
+    def evaluate(self,   revenue):
         """Evaluation of fair stock price based on the input assumptions"""
         dcf = 0  # Total cash flow over the analysis discounted to present value
         discounted_profit = 0  # Total net profit over the analysis discounted to present value
@@ -36,14 +36,24 @@ class Assumptions(object):
         print("Fair price (net profit): {:.2f}".format(intrinsic_profit_val))
 
 
-class Stock_Data(object):
+class StockData(object):
     def __init__(self, ticker_symbol='IBM', api='demo'):
         self.symbol = ticker_symbol
         self.income_statement = fetch_data('INCOME_STATEMENT', ticker_symbol, api)
         self.balance_sheet = fetch_data('BALANCE_SHEET', ticker_symbol, api)
         self.cash_flow = fetch_data('CASH_FLOW', ticker_symbol, api)
         self.overview = fetch_data('OVERVIEW', ticker_symbol, api)
-        # self.currency = currency
+        self.currency = self.overview['Currency']
+
+    def trailingTM(self):
+        qurterly = [[q_report['reportedCurrency'], q_report['totalRevenue']] for q_report in self.income_statement['quarterlyReports']]
+        print(qurterly)
+
+        if qurterly[0][0] != 'USD':
+            url = 'https://api.exchangerate.host/convert?from={0}&to=USD'.format(qurterly[0][0])
+            response = requests.get(url)
+            data = response.json()
+            print(data)
 
 
 def fetch_data(data_type='INCOME_STATEMENT', ticker_symbol='IBM', api_key='demo'):
@@ -133,7 +143,8 @@ if __name__ == "__main__":
         apikey, ticker = get_user_input()
         if ticker.casefold() == 'quit':
             break
-        stock = Stock_Data(ticker, apikey)
+        stock = StockData(ticker, apikey)
+        stock.trailingTM()
 
         # Create income and cash flow statement dictionary keys are years
         # - for each year a dictionary of the statement is stored
