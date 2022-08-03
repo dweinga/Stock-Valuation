@@ -4,36 +4,40 @@ import requests
 
 
 class Assumptions(object):
-    def __init__(self):
+    def __init__(self, years_of_analysis, rev_growth, profit_margin, fcf_margin, p_e, p_fcf, desired_ror):
         def percent_to_decimal(x):
             """Helper function to change percent input to decimal fraction"""
             return x/100
 
-        self.years_of_analysis = get_int("No. of years for the analysis: ")
-        self.rev_growth = percent_to_decimal(get_number("Enter the estimated annual revenue growth [%]: "))
-        self.profit_margin = percent_to_decimal(get_number("Enter the estimated annual profit margin [%]: "))
-        self.fcf_margin = percent_to_decimal(get_number("Enter the estimated annual free cash flow margin [%]: "))
-        self.p_e = get_number("Enter the terminal P/E multiple: ")
-        self.p_fcf = get_number("Enter the terminal P/FCF multiple: ")
-        self.desired_ror = percent_to_decimal(get_number("Enter the desired rate of return (discount rate) [%]: "))
+        self.years_of_analysis = years_of_analysis
+        self.rev_growth = percent_to_decimal(rev_growth)
+        self.profit_margin = percent_to_decimal(profit_margin)
+        self.fcf_margin = percent_to_decimal(fcf_margin)
+        self.p_e = p_e
+        self.p_fcf = p_fcf
+        self.desired_ror = percent_to_decimal(desired_ror)
 
-    def evaluate(self,   revenue):
+    def evaluate(self,   revenue, shares):
         """Evaluation of fair stock price based on the input assumptions"""
         dcf = 0  # Total cash flow over the analysis discounted to present value
         discounted_profit = 0  # Total net profit over the analysis discounted to present value
         discount_multiple = (1 + self.rev_growth)/(1 + self.desired_ror)
         for future_year in range(self.years_of_analysis):
-            dcf += (revenue[0] * self.fcf_margin) * discount_multiple ** (future_year + 1)
-            discounted_profit += (revenue[0] * self.profit_margin) * discount_multiple ** (future_year + 1)
-        terminal_fcf_value = self.p_fcf * (revenue[0] * self.fcf_margin) * discount_multiple ** self.years_of_analysis
-        terminal_prft_value = self.p_e * (revenue[0] * self.profit_margin) * discount_multiple ** self.years_of_analysis
+            dcf += (revenue * self.fcf_margin) * discount_multiple ** (future_year + 1)
+            discounted_profit += (revenue * self.profit_margin) * discount_multiple ** (future_year + 1)
+        terminal_fcf_value = self.p_fcf * (revenue * self.fcf_margin) * discount_multiple ** self.years_of_analysis
+        terminal_prft_value = self.p_e * (revenue * self.profit_margin) * discount_multiple ** self.years_of_analysis
         ev_fcf = dcf + terminal_fcf_value
         ev_profit = discounted_profit + terminal_prft_value
-        intrinsic_fcf_val = ev_fcf / int(stock.overview["SharesOutstanding"])
-        intrinsic_profit_val = ev_profit / int(stock.overview["SharesOutstanding"])
+        intrinsic_fcf = ev_fcf / shares
+        intrinsic_profit = ev_profit / shares
+        return intrinsic_fcf, intrinsic_profit
+
+
+def print_fair_price(intrinsic_fcf, intrinsic_profit):
         print('*' * 80)
-        print("Fair price (Free cash flow): {:.2f}".format(intrinsic_fcf_val))
-        print("Fair price (net profit): {:.2f}".format(intrinsic_profit_val))
+        print("Fair price (Free cash flow): {:.2f}".format(intrinsic_fcf))
+        print("Fair price (net profit): {:.2f}".format(intrinsic_profit))
 
 
 class StockData(object):
@@ -43,7 +47,7 @@ class StockData(object):
         self.balance_sheet = fetch_data('BALANCE_SHEET', ticker_symbol, api)
         self.cash_flow = fetch_data('CASH_FLOW', ticker_symbol, api)
         self.overview = fetch_data('OVERVIEW', ticker_symbol, api)
-        self.currency = self.overview['Currency']
+        # self.currency = self.overview['Currency']
 
     def trailingTM(self):
         qurterly = [[q_report['reportedCurrency'], q_report['totalRevenue']] for q_report in self.income_statement['quarterlyReports']]
@@ -67,7 +71,7 @@ def fetch_data(data_type='INCOME_STATEMENT', ticker_symbol='IBM', api_key='demo'
     return requested_data.json()
 
 
-def get_user_input():
+def get_api():
     try:
         with open("personal_api.txt", 'r') as saved_api_file:
             api_key = saved_api_file.read()
@@ -75,8 +79,24 @@ def get_user_input():
         api_key = input("Enter your API key and press `Enter`: ")
         with open("personal_api.txt", 'w') as create_api_file:
             create_api_file.write(apikey)
+    return api_key
+
+
+def get_user_input():
+    api_key = get_api()
     ticker = input("Enter ticker symbol or type `quit` to quit, then press `Enter`: ")
     return api_key, ticker
+
+
+def get_assumptions():
+    years_of_analysis = get_int("No. of years for the analysis: ")
+    rev_growth = get_number("Enter the estimated annual revenue growth [%]: ")
+    profit_margin = get_number("Enter the estimated annual profit margin [%]: ")
+    fcf_margin = get_number("Enter the estimated annual free cash flow margin [%]: ")
+    p_e = get_number("Enter the terminal P/E multiple: ")
+    p_fcf = get_number("Enter the terminal P/FCF multiple: ")
+    desired_ror = get_number("Enter the desired rate of return (discount rate) [%]: ")
+    return [years_of_analysis, rev_growth, profit_margin, fcf_margin, p_e, p_fcf, desired_ror]
 
 
 def get_int(prompt):
@@ -144,7 +164,7 @@ if __name__ == "__main__":
         if ticker.casefold() == 'quit':
             break
         stock = StockData(ticker, apikey)
-        stock.trailingTM()
+        # stock.trailingTM()
 
         # Create income and cash flow statement dictionary keys are years
         # - for each year a dictionary of the statement is stored
@@ -173,5 +193,8 @@ if __name__ == "__main__":
         present_historic_data(revenue_list, free_cash_flow_margin, net_income_margin, stock.overview["PERatio"])
 
         # Get user assumptions and perform analysis
-        valuation_assumptions = Assumptions()
-        valuation_assumptions.evaluate(revenue_list)
+        [years_of_analysis, rev_growth, profit_margin, fcf_margin, p_e, p_fcf, desired_ror] = get_assumptions()
+        valuation_assumptions = Assumptions(years_of_analysis, rev_growth, profit_margin, fcf_margin, p_e, p_fcf, desired_ror)
+        shares_outstanding = int(stock.overview["SharesOutstanding"])
+        (intrinsic_fcf_val, intrinsic_profit_val) = valuation_assumptions.evaluate(revenue_list[0], shares_outstanding)
+        print_fair_price(intrinsic_fcf_val, intrinsic_profit_val)

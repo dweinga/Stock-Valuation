@@ -1,5 +1,6 @@
 from tkinter import *
 from stock_valuation import *
+# globals(stock)
 
 
 class AssumptionLine(object):
@@ -21,12 +22,43 @@ def data_presentation(label_text, place, variable, row=1, column=1):
     var.grid(row=row, column=column+1)
 
 
+def create_stock_data():
+    global stock
+    api_key = get_api()
+    stock = StockData(ticker_var.get(), api_key)
+    update_data(stock)
+
+
+def update_data(stock):
+    pe_var.set(stock.overview["PERatio"])
+    ps_var.set(stock.overview["PriceToSalesRatioTTM"])
+    pb_var.set(stock.overview["PriceToBookRatio"])
+    mc_var.set(stock.overview["MarketCapitalization"])
+
+
+def analyze():
+    low_assumptions = Assumptions(yrs_variable.get(), float(rev_growth.low_var.get()),
+                                  float(profit_margin.low_var.get()), float(fcf_margin.low_var.get()),
+                                  float(p_e.low_var.get()), float(p_fcf.low_var.get()), float(desired_ror.low_var.get()))
+    high_assumptions = Assumptions(yrs_variable.get(), float(rev_growth.high_var.get()),
+                                   float(profit_margin.high_var.get()), float(fcf_margin.high_var.get()),
+                                   float(p_e.high_var.get()), float(p_fcf.high_var.get()), float(desired_ror.high_var.get()))
+    annual_revenue = int(stock.income_statement['annualReports'][0]['totalRevenue'])
+    shares_outst = int(stock.overview["SharesOutstanding"])
+    (low_intrinsic_fcf_val, low_intrinsic_profit_val) = low_assumptions.evaluate(annual_revenue, shares_outst)
+    (high_intrinsic_fcf_val, high_intrinsic_profit_val) = high_assumptions.evaluate(annual_revenue, shares_outst)
+    earnings_low_value.set("{:.2f} $".format(low_intrinsic_profit_val))
+    earnings_high_value.set("{:.2f} $".format(high_intrinsic_profit_val))
+    fcf_low_value.set("{:.2f} $".format(low_intrinsic_fcf_val))
+    fcf_high_value.set("{:.2f} $".format(high_intrinsic_fcf_val))
+
+
 mainWindow = Tk()
 
 # Set up the screen
-mainWindow.geometry("640x480")
+mainWindow.geometry("420x480")
 mainWindow.configure(background="gray")
-mainWindow.title("Stock Valuation")
+mainWindow.title("Stock Initial Analysis")
 mainWindow['padx'] = 10
 mainWindow['pady'] = 10
 
@@ -39,7 +71,7 @@ ticker_label.grid(row=0, column=0)
 ticker_var = StringVar(mainWindow)
 ticker_entry = Entry(data_frame, textvariable=ticker_var)
 ticker_entry.grid(row=0, column=1, columnspan=2, sticky="w")
-ticker_button = Button(data_frame, text="Get data")
+ticker_button = Button(data_frame, text="Get data", command=create_stock_data)
 ticker_button.grid(row=0, column=3)
 
 # Stock data
@@ -47,15 +79,15 @@ pe_var = StringVar(mainWindow)
 data_presentation("P/E", data_frame, pe_var, 1, 0)
 ps_var = StringVar(mainWindow)
 data_presentation("P/S", data_frame, ps_var, 2, 0)
-pfcf_var = StringVar(mainWindow)
-data_presentation("P/FCF", data_frame, pfcf_var, 3, 0)
+pb_var = StringVar(mainWindow)
+data_presentation("P/B", data_frame, pb_var, 3, 0)
 mc_var = StringVar(mainWindow)
 data_presentation("Market Cap", data_frame, mc_var, 4, 0)
 
 # Assumptions
 assumptions_frame = LabelFrame(mainWindow, text="Valuation Assumptions",
                                relief="sunken", borderwidth=1, background="gray")
-assumptions_frame.grid(row=2, column=0, sticky="ew", columnspan=3, rowspan=1)
+assumptions_frame.grid(row=1, column=0, sticky="ew", columnspan=3, rowspan=1)
 
 low_label = Label(assumptions_frame, text="Low", background="gray")
 low_label.grid(row=1, column=1)
@@ -65,12 +97,12 @@ high_label.grid(row=1, column=2)
 OPTIONS = [1, 2, 3, 4, 5,
            6, 7, 8, 9, 10,
            11, 12, 13, 14, 15]
-yrs_variable = StringVar(assumptions_frame)
+yrs_variable = IntVar(assumptions_frame)
 yrs_variable.set(10) # default value
 yrs_for_analysis_label = Label(assumptions_frame, text="Years of analysis: ", background="gray")
 yrs_for_analysis_label.grid(row=0, column=0)
 yrs_for_analysis = OptionMenu(assumptions_frame, yrs_variable, *OPTIONS)
-yrs_for_analysis.grid(row=0, column=1)
+yrs_for_analysis.grid(row=0, column=1, columnspan=2)
 
 rev_growth = AssumptionLine("Annual Revenue Growth", assumptions_frame, 2, 0)
 profit_margin = AssumptionLine("Profit Margin", assumptions_frame, 3, 0)
@@ -79,13 +111,13 @@ p_e = AssumptionLine("Future P/E", assumptions_frame, 5, 0)
 p_fcf = AssumptionLine("Future P/FCF", assumptions_frame, 6, 0)
 desired_ror = AssumptionLine("Desired ROR", assumptions_frame, 7, 0)
 
-analyze_button = Button(mainWindow, text="Analyze")
-analyze_button.grid(row=3, column=0, columnspan=3, sticky="ew")
+analyze_button = Button(mainWindow, text="Analyze", command=analyze)
+analyze_button.grid(row=2, column=0, columnspan=3, sticky="ew")
 
 # Fair value presentation
 fair_value_frame = LabelFrame(mainWindow, text="Fair Value",
                               relief="sunken", borderwidth=1, background="gray")
-fair_value_frame.grid(row=4, column=0, sticky="ew", columnspan=3, rowspan=1)
+fair_value_frame.grid(row=3, column=0, sticky="ew", columnspan=3, rowspan=1)
 
 earnings_low_value = Variable(fair_value_frame)
 earnings_low_value.set(0) # default value
