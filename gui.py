@@ -30,13 +30,25 @@ def create_stock_data():
 
 
 def update_data(stock):
+    def display_market_cap(market_cap):
+        """Helper function for displaying the market cap"""
+        if (market_cap == "") or (market_cap <= 1000000):
+            return market_cap
+        elif market_cap > 1000000000:
+            billions = market_cap / 1000000000
+            return "{:.2f}B".format(billions)
+        elif market_cap > 1000000:
+            millions = market_cap / 1000000
+            return "{:.2f}M".format(millions)
+
     pe_var.set(stock.overview["PERatio"])
     ps_var.set(stock.overview["PriceToSalesRatioTTM"])
     pb_var.set(stock.overview["PriceToBookRatio"])
-    mc_var.set(stock.overview["MarketCapitalization"])
+    mc_var.set(display_market_cap(int(stock.overview["MarketCapitalization"])))
 
 
 def analyze():
+    """Function executed when the analyze button is pushed"""
     low_assumptions = Assumptions(yrs_variable.get(), float(rev_growth.low_var.get()),
                                   float(profit_margin.low_var.get()), float(fcf_margin.low_var.get()),
                                   float(p_e.low_var.get()), float(p_fcf.low_var.get()), float(desired_ror.low_var.get()))
@@ -140,7 +152,5 @@ fcf_low_label = Label(fair_value_frame, textvariable=fcf_low_value, background="
 fcf_low_label.grid(row=2, column=1, sticky="ew")
 fcf_high_label = Label(fair_value_frame, textvariable=fcf_high_value, background="gray")
 fcf_high_label.grid(row=2, column=2, sticky="ew")
-
-
 
 mainWindow.mainloop()
