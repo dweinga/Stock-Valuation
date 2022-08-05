@@ -35,9 +35,9 @@ class Assumptions(object):
 
 
 def print_fair_price(intrinsic_fcf, intrinsic_profit):
-        print('*' * 80)
-        print("Fair price (Free cash flow): {:.2f}".format(intrinsic_fcf))
-        print("Fair price (net profit): {:.2f}".format(intrinsic_profit))
+    print('*' * 80)
+    print("Fair price (Free cash flow): {:.2f}".format(intrinsic_fcf))
+    print("Fair price (net profit): {:.2f}".format(intrinsic_profit))
 
 
 class StockData(object):
@@ -73,12 +73,12 @@ def fetch_data(data_type='INCOME_STATEMENT', ticker_symbol='IBM', api_key='demo'
 
 def get_api():
     try:
-        with open("personal_api.txt", 'r') as saved_api_file:
+        with open("../personal_api.txt", 'r') as saved_api_file:
             api_key = saved_api_file.read()
     except FileNotFoundError:
         api_key = input("Enter your API key and press `Enter`: ")
-        with open("personal_api.txt", 'w') as create_api_file:
-            create_api_file.write(apikey)
+        with open("../personal_api.txt", 'w') as create_api_file:
+            create_api_file.write(api_key)
     return api_key
 
 
