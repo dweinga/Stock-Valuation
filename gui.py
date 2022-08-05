@@ -1,6 +1,6 @@
 from tkinter import *
 from stock_valuation import *
-# globals(stock)
+import webbrowser
 
 
 class AssumptionLine(object):
@@ -22,9 +22,50 @@ def data_presentation(label_text, place, variable, row=1, column=1):
     var.grid(row=row, column=column+1)
 
 
+def personal_api():
+    # try:
+    #     with open("../personal_api.txt", 'r') as saved_api_file:
+    #         api_key = saved_api_file.read()
+    # except FileNotFoundError:
+        # Callback function for link to free api web page
+        def callback(url):
+            webbrowser.open_new_tab(url)
+
+        def but_func():
+            with open("../personal_api.txt", 'w') as create_api_file:
+                create_api_file.write(api_key.get())
+            api_window.destroy()
+
+        # Set up pop-up window
+        api_window = Tk()
+        api_window.geometry("300x150")
+        # api_window.configure(background="gray")
+        api_window.title("API-key Required")
+        api_window['padx'] = 10
+        api_window['pady'] = 10
+        api_label = Label(api_window, text="Please enter your API-key.\nReceive an API key from:")
+        api_label.pack()
+        link = Label(api_window, text="https://www.alphavantage.co/support/#api-key",
+                     font=('Helveticabold', 9), fg="blue", cursor="hand2")
+        link.pack()
+        link.bind("<Button-1>", lambda e: callback("https://www.alphavantage.co/support/#api-key"))
+        api_key = StringVar(api_window)
+        api_entry = Entry(api_window, textvariable=api_key)
+        api_entry.pack()
+        api_button = Button(api_window, text="OK", command=but_func)
+        api_button.pack()
+        return api_key
+
+
 def create_stock_data():
     global stock
-    api_key = get_api()
+    try:
+        with open("../personal_api.txt", 'r') as saved_api_file:
+            api_key = saved_api_file.read()
+    except FileNotFoundError:
+        api_key = personal_api()
+        with open("../personal_api.txt", 'w') as create_api_file:
+            create_api_file.write(api_key.get())
     stock = StockData(ticker_var.get(), api_key)
     update_data(stock)
 
@@ -68,7 +109,7 @@ def analyze():
 mainWindow = Tk()
 
 # Set up the screen
-mainWindow.geometry("420x480")
+mainWindow.geometry("420x420")
 mainWindow.configure(background="gray")
 mainWindow.title("Stock Initial Analysis")
 mainWindow['padx'] = 10
