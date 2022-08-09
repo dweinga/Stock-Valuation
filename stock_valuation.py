@@ -1,30 +1,31 @@
 """Before running the program you must receive an API key from
  https://www.alphavantage.co/support/#api-key"""
 import requests
+import numpy as np
 
 
 class Assumptions(object):
-    def __init__(self, years_of_analysis, rev_growth, profit_margin, fcf_margin, p_e, p_fcf, desired_ror):
+    def __init__(self, yrs_of_analysis, rev_grwth, prft_margin, fcf_mrgn, pe, pfcf, ror):
         def percent_to_decimal(x):
             """Helper function to change percent input to decimal fraction"""
             return x/100
 
-        self.years_of_analysis = years_of_analysis
-        self.rev_growth = percent_to_decimal(rev_growth)
-        self.profit_margin = percent_to_decimal(profit_margin)
-        self.fcf_margin = percent_to_decimal(fcf_margin)
-        self.p_e = p_e
-        self.p_fcf = p_fcf
-        self.desired_ror = percent_to_decimal(desired_ror)
+        self.years_of_analysis = yrs_of_analysis
+        self.rev_growth = percent_to_decimal(rev_grwth)
+        self.profit_margin = percent_to_decimal(prft_margin)
+        self.fcf_margin = percent_to_decimal(fcf_mrgn)
+        self.p_e = pe
+        self.p_fcf = pfcf
+        self.desired_ror = percent_to_decimal(ror)
 
-    def evaluate(self,   revenue, shares):
+    def evaluate(self, revenue, shares):
         """Evaluation of fair stock price based on the input assumptions"""
-        dcf = 0  # Total cash flow over the analysis discounted to present value
-        discounted_profit = 0  # Total net profit over the analysis discounted to present value
         discount_multiple = (1 + self.rev_growth)/(1 + self.desired_ror)
-        for future_year in range(self.years_of_analysis):
-            dcf += (revenue * self.fcf_margin) * discount_multiple ** (future_year + 1)
-            discounted_profit += (revenue * self.profit_margin) * discount_multiple ** (future_year + 1)
+        yrs = np.arange(self.years_of_analysis) + np.ones(self.years_of_analysis)
+        dcf_arr = (revenue * self.fcf_margin) * discount_multiple ** yrs
+        dcf = dcf_arr.sum()
+        discounted_profit_arr = (revenue * self.profit_margin) * discount_multiple ** yrs
+        discounted_profit = discounted_profit_arr.sum()
         terminal_fcf_value = self.p_fcf * (revenue * self.fcf_margin) * discount_multiple ** self.years_of_analysis
         terminal_prft_value = self.p_e * (revenue * self.profit_margin) * discount_multiple ** self.years_of_analysis
         ev_fcf = dcf + terminal_fcf_value
@@ -49,15 +50,16 @@ class StockData(object):
         self.overview = fetch_data('OVERVIEW', ticker_symbol, api)
         # self.currency = self.overview['Currency']
 
-    def trailingTM(self):
-        qurterly = [[q_report['reportedCurrency'], q_report['totalRevenue']] for q_report in self.income_statement['quarterlyReports']]
+    def trailing_twelve_months(self):
+        qurterly = [[q_report['reportedCurrency'], q_report['totalRevenue']]
+                    for q_report in self.income_statement['quarterlyReports']]
         print(qurterly)
 
         if qurterly[0][0] != 'USD':
             url = 'https://api.exchangerate.host/convert?from={0}&to=USD'.format(qurterly[0][0])
             response = requests.get(url)
-            data = response.json()
-            print(data)
+            currency_data = response.json()
+            print(currency_data)
 
 
 def fetch_data(data_type='INCOME_STATEMENT', ticker_symbol='IBM', api_key='demo'):
@@ -71,7 +73,7 @@ def fetch_data(data_type='INCOME_STATEMENT', ticker_symbol='IBM', api_key='demo'
     return requested_data.json()
 
 
-def get_api():
+def get_api() -> str:
     try:
         with open("../personal_api.txt", 'r') as saved_api_file:
             api_key = saved_api_file.read()
@@ -82,24 +84,24 @@ def get_api():
     return api_key
 
 
-def get_user_input():
+def get_user_input() -> (str, str):
     api_key = get_api()
-    ticker = input("Enter ticker symbol or type `quit` to quit, then press `Enter`: ")
-    return api_key, ticker
+    tikr = input("Enter ticker symbol or type `quit` to quit, then press `Enter`: ")
+    return api_key, tikr
 
 
-def get_assumptions():
-    years_of_analysis = get_int("No. of years for the analysis: ")
-    rev_growth = get_number("Enter the estimated annual revenue growth [%]: ")
-    profit_margin = get_number("Enter the estimated annual profit margin [%]: ")
-    fcf_margin = get_number("Enter the estimated annual free cash flow margin [%]: ")
-    p_e = get_number("Enter the terminal P/E multiple: ")
-    p_fcf = get_number("Enter the terminal P/FCF multiple: ")
-    desired_ror = get_number("Enter the desired rate of return (discount rate) [%]: ")
-    return [years_of_analysis, rev_growth, profit_margin, fcf_margin, p_e, p_fcf, desired_ror]
+def get_assumptions() -> (int, float, float, float, float, float, float):
+    yrs_of_analysis = get_int("No. of years for the analysis: ")
+    rev_grwth = get_number("Enter the estimated annual revenue growth [%]: ")
+    profit_marg = get_number("Enter the estimated annual profit margin [%]: ")
+    fcf_marg = get_number("Enter the estimated annual free cash flow margin [%]: ")
+    pe_ratio = get_number("Enter the terminal P/E multiple: ")
+    p_to_fcf = get_number("Enter the terminal P/FCF multiple: ")
+    dror = get_number("Enter the desired rate of return (discount rate) [%]: ")
+    return [yrs_of_analysis, rev_grwth, profit_marg, fcf_marg, pe_ratio, p_to_fcf, dror]
 
 
-def get_int(prompt):
+def get_int(prompt: str) -> int:
     while True:
         number = input(prompt)
         if number.isnumeric():
@@ -108,7 +110,7 @@ def get_int(prompt):
             print("Enter a valid whole number, please try again.")
 
 
-def get_number(prompt):
+def get_number(prompt: str) -> float:
     while True:
         number = input(prompt)
         try:
@@ -117,10 +119,10 @@ def get_number(prompt):
             print("Enter a valid number, please try again.")
 
 
-def single_attribute_list_creator(attribute, statement):
+def single_attribute_list_creator(attribute: str, statement: dict) -> list:
     annual_list = []
-    for year in years:
-        annual_list.append(int(statement[year][attribute]))
+    for yr in years:
+        annual_list.append(int(statement[yr][attribute]))
     return annual_list
 
 
@@ -130,7 +132,7 @@ def calculate_margins(bottom_line: list, top_line: list) -> list:
     return margin
 
 
-def present_historic_data(rev_list, fcf_margin, profit_margin, p_e):
+def present_historic_data(rev_list, fcf_mrgn, prft_margin, pe):
     cagr_rev = []
     for j in range(1, len(rev_list)):
         cagr_rev.append("%.1f" % (((rev_list[0]/rev_list[j]) ** (1/j) - 1) * 100) + " %")
@@ -139,9 +141,9 @@ def present_historic_data(rev_list, fcf_margin, profit_margin, p_e):
     avg_profit_margin = []
     sum_profit_margin = 0
     for j in range(len(fcf_margin)):
-        sum_fcf_margin += fcf_margin[j]
+        sum_fcf_margin += fcf_mrgn[j]
         avg_fcf_margin.append("%.1f" % (sum_fcf_margin/(j + 1) * 100) + " %")
-        sum_profit_margin += profit_margin[j]
+        sum_profit_margin += prft_margin[j]
         avg_profit_margin.append("%.1f" % (sum_profit_margin/(j + 1) * 100) + " %")
 
     # Print the data in table
@@ -154,7 +156,7 @@ def present_historic_data(rev_list, fcf_margin, profit_margin, p_e):
         for item in content[row]:
             print(f" {item} ", end='|')
         print()
-    print(f"Current P/E: {p_e}")
+    print(f"Current P/E: {pe}")
     print('*' * 80)
 
 
@@ -194,7 +196,8 @@ if __name__ == "__main__":
 
         # Get user assumptions and perform analysis
         [years_of_analysis, rev_growth, profit_margin, fcf_margin, p_e, p_fcf, desired_ror] = get_assumptions()
-        valuation_assumptions = Assumptions(years_of_analysis, rev_growth, profit_margin, fcf_margin, p_e, p_fcf, desired_ror)
+        valuation_assumptions = \
+            Assumptions(years_of_analysis, rev_growth, profit_margin, fcf_margin, p_e, p_fcf, desired_ror)
         shares_outstanding = int(stock.overview["SharesOutstanding"])
         (intrinsic_fcf_val, intrinsic_profit_val) = valuation_assumptions.evaluate(revenue_list[0], shares_outstanding)
         print_fair_price(intrinsic_fcf_val, intrinsic_profit_val)
