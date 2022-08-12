@@ -119,10 +119,8 @@ def get_number(prompt: str) -> float:
             print("Enter a valid number, please try again.")
 
 
-def single_attribute_list_creator(attribute: str, statement: dict) -> list:
-    annual_list = []
-    for yr in years:
-        annual_list.append(int(statement[yr][attribute]))
+def single_attribute_list_generator(attribute: str, statement: dict, years: list) -> list:
+    annual_list = [(int(statement[yr][attribute])) for yr in years]
     return annual_list
 
 
@@ -132,7 +130,42 @@ def calculate_margins(bottom_line: list, top_line: list) -> list:
     return margin
 
 
-def present_historic_data(rev_list, fcf_mrgn, prft_margin, pe):
+def parse_statements(stock):
+    # Create income and cash flow statement dictionary keys are years
+    # - for each year a dictionary of the statement is stored
+    annual_income_statement = {}
+    annual_cash_flow_statement = {}
+    years = []
+    for index, report in enumerate(stock.income_statement['annualReports']):
+        year = report['fiscalDateEnding'][:4]
+        years.append(year)
+        annual_income_statement[year] = report
+        annual_cash_flow_statement[year] = stock.cash_flow['annualReports'][index]
+
+    revenue_list = single_attribute_list_generator('totalRevenue',
+                                                   annual_income_statement,
+                                                   years)
+    net_profit_list = single_attribute_list_generator('netIncome',
+                                                      annual_income_statement,
+                                                      years)
+    net_profit_margin = calculate_margins(net_profit_list,
+                                          revenue_list)
+
+    # Free cash flow calculation
+    operating_cash_flow_list = single_attribute_list_generator('operatingCashflow',
+                                                               annual_cash_flow_statement,
+                                                               years)
+    capital_expenditures_list = single_attribute_list_generator('capitalExpenditures',
+                                                                annual_cash_flow_statement,
+                                                                years)
+    free_cash_flow_list = [(operating_cash_flow_list[i] - capital_expenditures_list[i])
+                           for i in range(len(operating_cash_flow_list))]
+    free_cash_flow_margin = calculate_margins(free_cash_flow_list,
+                                              revenue_list)
+    return revenue_list, net_profit_margin, free_cash_flow_margin, years
+
+
+def display_historic_data(rev_list, fcf_mrgn, prft_margin, pe):
     cagr_rev = []
     for j in range(1, len(rev_list)):
         cagr_rev.append("%.1f" % (((rev_list[0]/rev_list[j]) ** (1/j) - 1) * 100) + " %")
@@ -140,7 +173,7 @@ def present_historic_data(rev_list, fcf_mrgn, prft_margin, pe):
     sum_fcf_margin = 0
     avg_profit_margin = []
     sum_profit_margin = 0
-    for j in range(len(fcf_margin)):
+    for j in range(len(fcf_mrgn)):
         sum_fcf_margin += fcf_mrgn[j]
         avg_fcf_margin.append("%.1f" % (sum_fcf_margin/(j + 1) * 100) + " %")
         sum_profit_margin += prft_margin[j]
@@ -168,36 +201,25 @@ if __name__ == "__main__":
         stock = StockData(ticker, apikey)
         # stock.trailingTM()
 
-        # Create income and cash flow statement dictionary keys are years
-        # - for each year a dictionary of the statement is stored
-        annual_income_statement = {}
-        annual_cash_flow_statement = {}
-        years = []
-        for index, report in enumerate(stock.income_statement['annualReports']):
-            # print(data[list(data.keys())[1]][index])
-            year = report['fiscalDateEnding'][:4]
-            years.append(year)
-            annual_income_statement[year] = report
-            annual_cash_flow_statement[year] = stock.cash_flow['annualReports'][index]
+        # Data parsing
+        revenue_list, free_cash_flow_margin, net_profit_margin, years = parse_statements(stock)
 
-        revenue_list = single_attribute_list_creator('totalRevenue', annual_income_statement)
-        net_income_list = single_attribute_list_creator('netIncome', annual_income_statement)
-        net_income_margin = calculate_margins(net_income_list, revenue_list)
-
-        # Free cash flow calculation
-        free_cash_flow_list = []
-        operating_cash_flow_list = single_attribute_list_creator('operatingCashflow', annual_cash_flow_statement)
-        capital_expenditures_list = single_attribute_list_creator('capitalExpenditures', annual_cash_flow_statement)
-        for i in range(len(operating_cash_flow_list)):
-            free_cash_flow_list.append(operating_cash_flow_list[i] - capital_expenditures_list[i])
-        free_cash_flow_margin = calculate_margins(free_cash_flow_list, revenue_list)
-
-        present_historic_data(revenue_list, free_cash_flow_margin, net_income_margin, stock.overview["PERatio"])
+        # Arrange and display parsed data
+        display_historic_data(revenue_list,
+                              free_cash_flow_margin,
+                              net_profit_margin,
+                              stock.overview["PERatio"])
 
         # Get user assumptions and perform analysis
         [years_of_analysis, rev_growth, profit_margin, fcf_margin, p_e, p_fcf, desired_ror] = get_assumptions()
-        valuation_assumptions = \
-            Assumptions(years_of_analysis, rev_growth, profit_margin, fcf_margin, p_e, p_fcf, desired_ror)
+        valuation_assumptions = Assumptions(years_of_analysis,
+                                            rev_growth,
+                                            profit_margin,
+                                            fcf_margin,
+                                            p_e,
+                                            p_fcf,
+                                            desired_ror)
         shares_outstanding = int(stock.overview["SharesOutstanding"])
-        (intrinsic_fcf_val, intrinsic_profit_val) = valuation_assumptions.evaluate(revenue_list[0], shares_outstanding)
+        (intrinsic_fcf_val, intrinsic_profit_val) = valuation_assumptions.evaluate(revenue_list[0],
+                                                                                   shares_outstanding)
         print_fair_price(intrinsic_fcf_val, intrinsic_profit_val)
