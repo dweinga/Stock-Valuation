@@ -1,4 +1,5 @@
 # Stock Valuation Program
+# The Alpha Vantage API's used for this program have changed from free account to premium account! Therefore the program dosn't work. I will be looking to change the APIs to a free alternative.
 ## Overview
 This program provides a tool for initial evaluation of a fair price for a stock based
 on the previous year's financial data and assumptions of future revenue, earnings
