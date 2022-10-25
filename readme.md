@@ -1,5 +1,5 @@
 # Stock Valuation Program
-# The Alpha Vantage API's used for this program have changed from free account to premium account! Therefore the program dosn't work.
+# The Alpha Vantage APIs used for this program have changed from free account to premium account! Therefore the program dosn't work.
 ## It can currently be used on demo mode only which is - the api key must be - "demo" and the only ticker symbol that will work is IBM.
 ## Overview
 This program provides a tool for initial evaluation of a fair price for a stock based
