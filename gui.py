@@ -36,17 +36,19 @@ def plot(revenue, fcf_margin, netprofit_margin, years):
     # the figure that will contain the plot
     fig = Figure(figsize=(4, 4), layout='constrained', facecolor=background_color)
 
-    # adding the subplot
+    # adding the subplots
     ax1 = fig.add_subplot(3, 1, 1)
     ax2 = fig.add_subplot(3, 1, 2)
     ax3 = fig.add_subplot(3, 1, 3)
 
-    ax1.sharex(ax3)
+    # plotting the data
+    ax1.bar(years, revenue, color=background_color)
+    ax2.bar(years, fcf_margin, color=background_color)
+    ax3.bar(years, netprofit_margin, color=background_color)
 
-    # plotting the graph
-    ax1.bar(years, revenue)
-    ax2.bar(years, fcf_margin)
-    ax3.bar(years, netprofit_margin)
+    ax1.set_facecolor('#eafff5')
+    ax2.set_facecolor('#eafff5')
+    ax3.set_facecolor('#eafff5')
 
     # creating the Tkinter canvas
     # containing the Matplotlib figure
@@ -54,7 +56,7 @@ def plot(revenue, fcf_margin, netprofit_margin, years):
     canvas.draw()
 
     # placing the canvas on the Tkinter window
-    canvas.get_tk_widget().grid(row=0, column=3, rowspan=4)
+    canvas.get_tk_widget().grid(row=0, column=3, rowspan=4, padx=5)
     # creating the Matplotlib toolbar
     toolbar = NavigationToolbar2Tk(canvas,
                                    mainWindow,
@@ -62,7 +64,7 @@ def plot(revenue, fcf_margin, netprofit_margin, years):
     toolbar.update()
 
     # placing the toolbar on the Tkinter window
-    canvas.get_tk_widget().grid(row=0, column=3, padx=5)
+    # canvas.get_tk_widget().grid(row=0, column=3, padx=5)
 
 
 def personal_api():
@@ -71,7 +73,7 @@ def personal_api():
         webbrowser.open_new_tab(url)
 
     def but_func():
-        with open("../personal_api.txt", 'w') as create_api_file:
+        with open("../StockValuation/personal_api.txt", 'w') as create_api_file:
             create_api_file.write(api_key.get())
         api_window.destroy()
 
@@ -101,11 +103,11 @@ def personal_api():
 def create_stock_data():
     global stock
     try:
-        with open("../personal_api.txt", 'r') as saved_api_file:
+        with open("../StockValuation/personal_api.txt", 'r') as saved_api_file:
             api_key = saved_api_file.read()
     except FileNotFoundError:
         api_key = personal_api()
-        with open("../personal_api.txt", 'w') as create_api_file:
+        with open("../StockValuation/personal_api.txt", 'w') as create_api_file:
             create_api_file.write(api_key.get())
     stock = StockData(ticker_var.get(), api_key)
     update_data_display(stock)

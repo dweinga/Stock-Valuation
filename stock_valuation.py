@@ -75,11 +75,11 @@ def fetch_data(data_type='INCOME_STATEMENT', ticker_symbol='IBM', api_key='demo'
 
 def get_api() -> str:
     try:
-        with open("../personal_api.txt", 'r') as saved_api_file:
+        with open("../StockValuation/personal_api.txt", 'r') as saved_api_file:
             api_key = saved_api_file.read()
     except FileNotFoundError:
         api_key = input("Enter your API key and press `Enter`: ")
-        with open("../personal_api.txt", 'w') as create_api_file:
+        with open("../StockValuation/personal_api.txt", 'w') as create_api_file:
             create_api_file.write(api_key)
     return api_key
 
